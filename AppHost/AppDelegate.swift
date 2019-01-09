@@ -1,5 +1,6 @@
 import UIKit
 import SDK
+import MyObjC
 
 class StoryboardAssembly: Assembly {
 
@@ -41,6 +42,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow? = UIWindow()
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+
+        let objcObj = MyObjCClass()
+        print(objcObj)
 
 //        let assembler = Assembler([StoryboardAssembly()])
 //        let homeScene = assembler.resolver.resolve(HomeScene.self)!

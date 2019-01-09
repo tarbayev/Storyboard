@@ -12,9 +12,9 @@
 		01119A222184C3C400795BCA /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 01119A202184C3C400795BCA /* LaunchScreen.storyboard */; };
 		01119A2D2184C3C400795BCA /* AppHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01119A2C2184C3C400795BCA /* AppHostTests.swift */; };
 		013D2953218918B600CEA32D /* HomeViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 013D2952218918B600CEA32D /* HomeViewController.xib */; };
-		0168450721BD801A002FCC90 /* Dependencies.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0168450621BD801A002FCC90 /* Dependencies.framework */; };
 		0168450921BD8068002FCC90 /* HomeScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0168450821BD8068002FCC90 /* HomeScene.swift */; };
 		0168450D21BD84B7002FCC90 /* DetailScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0168450C21BD84B7002FCC90 /* DetailScene.swift */; };
+		01D23DA821E5F35A00AF4CEE /* Dependencies.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01D23DA721E5F35A00AF4CEE /* Dependencies.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -37,9 +37,9 @@
 		01119A2C2184C3C400795BCA /* AppHostTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppHostTests.swift; sourceTree = "<group>"; };
 		01119A2E2184C3C400795BCA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		013D2952218918B600CEA32D /* HomeViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = HomeViewController.xib; sourceTree = "<group>"; };
-		0168450621BD801A002FCC90 /* Dependencies.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Dependencies.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		0168450821BD8068002FCC90 /* HomeScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScene.swift; sourceTree = "<group>"; };
 		0168450C21BD84B7002FCC90 /* DetailScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailScene.swift; sourceTree = "<group>"; };
+		01D23DA721E5F35A00AF4CEE /* Dependencies.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = Dependencies.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,7 +47,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0168450721BD801A002FCC90 /* Dependencies.framework in Frameworks */,
+				01D23DA821E5F35A00AF4CEE /* Dependencies.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -106,7 +106,7 @@
 		01119A392184E25000795BCA /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				0168450621BD801A002FCC90 /* Dependencies.framework */,
+				01D23DA721E5F35A00AF4CEE /* Dependencies.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -369,6 +369,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = S27ERL4VN6;
 				INFOPLIST_FILE = AppHost/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -386,6 +387,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = S27ERL4VN6;
 				INFOPLIST_FILE = AppHost/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
