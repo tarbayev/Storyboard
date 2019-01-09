@@ -20,7 +20,7 @@ open class Assembly {
             return object as! T
         }
 
-        if stackDepth == 0 {
+        if rootKey == nil {
             rootKey = forKey
         }
 
@@ -41,13 +41,20 @@ open class Assembly {
         stackDepth -= 1
 
         if stackDepth == 0 {
-            completers.forEach { complete in
+            let tempCompleters = completers
+
+            completers = []
+
+            tempCompleters.forEach { complete in
                 complete()
             }
 
-            instances.removeValue(forKey: rootKey)
-            objc_setAssociatedObject(object, &Assembly.RetainedKey, instances.values, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
-            instances.removeAll()
+            if rootKey != nil {
+                instances.removeValue(forKey: rootKey)
+                objc_setAssociatedObject(object, &Assembly.RetainedKey, instances.values, objc_AssociationPolicy.OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+                instances.removeAll()
+                rootKey = nil
+            }
         }
 
         return object

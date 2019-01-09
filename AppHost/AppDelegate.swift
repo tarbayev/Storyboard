@@ -3,18 +3,45 @@ import SDK
 
 class StoryboardAssembly: Assembly {
 
-    var homeScene: HomeScene {
-        return provide(instance: HomeScene(), complete: { scene in
-            scene.showDetails = PushSegue(destination: self.detailScene)
+    var rootScene: TabBarScene {
+        return provide(instance: TabBarScene(scenes: [
+            naviagtionSceneA0,
+            naviagtionSceneB0,
+        ]))
+    }
+}
+
+private extension StoryboardAssembly {
+    var naviagtionSceneA0: NavigationScene {
+        return provide(instance: NavigationScene(rootScene: StaticScene(scene: sceneA0, input: 1)))
+    }
+
+    var sceneA0: SampleScene {
+        return provide(instance: SampleScene(), complete: { scene in
+            scene.completionSegue = PushSegue(destination: self.sceneA1)
         })
     }
 
-    private var detailScene: DetailScene {
-        return provide(instance: DetailScene())
+    var sceneA1: SampleScene {
+        return provide(instance: SampleScene(), complete: { scene in
+            scene.completionSegue = PushSegue(destination: self.sceneA2)
+        })
     }
 
-    private var pushSegue: PushSegue<DetailScene> {
-        return provide(instance: PushSegue(destination: detailScene))
+    var sceneA2: SampleScene {
+        return provide(instance: SampleScene(), complete: { scene in
+            scene.completionSegue = ActivationgSegue(destination: self.sceneB0)
+        })
+    }
+
+    var naviagtionSceneB0: NavigationScene {
+        return provide(instance: NavigationScene(rootScene: StaticScene(scene: sceneB0, input: 1)))
+    }
+
+    var sceneB0: SampleScene {
+        return provide(instance: SampleScene(), complete: { scene in
+            scene.completionSegue = PushSegue(destination: self.sceneA0)
+        })
     }
 }
 
@@ -45,11 +72,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 //        let assembler = Assembler([StoryboardAssembly()])
 //        let homeScene = assembler.resolver.resolve(HomeScene.self)!
 
-        let homeScene = StoryboardAssembly().homeScene
-
-        let navigationViewController = UINavigationController(rootViewController: homeScene.instantiateViewController(withPayload: ()))
-
-        window?.rootViewController = navigationViewController
+        window?.rootViewController = StoryboardAssembly().rootScene.instantiateViewController(withPayload: ())
         window?.makeKeyAndVisible()
         return true
     }
