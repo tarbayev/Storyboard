@@ -1,20 +1,20 @@
 import UIKit
 
+public struct Storyboard {
+    
+}
+
 public protocol Scene {
     associatedtype InputType
     associatedtype InstanceType: UIViewController
-    func instantiateViewController(withPayload payload: InputType) -> InstanceType
-}
 
-public extension Scene {
-    var identifier: InstanceType.Type {
-        return InstanceType.self
-    }
+    var identifier: String { get }
+
+    func instantiateViewController(withPayload payload: InputType) -> InstanceType
 }
 
 public class Segue<InputType> {
     public func perform(withInput input: InputType, sourceViewController: UIViewController) {}
-    final func foo() {}
 }
 
 public class PushSegue<Destination: Scene>: Segue<Destination.InputType> {
