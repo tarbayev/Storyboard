@@ -116,7 +116,7 @@ public extension Storyboard {
     }
 }
 
-public class PushSegue: SegueTransition {
+public class PushTransition: SegueTransition {
 
     public init() {}
 
@@ -178,7 +178,7 @@ extension UIViewController {
     }
 }
 
-public class ActivationgSegue: SegueTransition {
+public class ActivationgTransition: SegueTransition {
 
     public init() {}
 
