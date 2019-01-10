@@ -59,7 +59,9 @@ extension UIViewController {
 }
 
 public protocol Storyboard {
-//    var rootIdentifier: AnyKeyPath { get }
+
+    associatedtype RootSceneType: Scene where RootSceneType.InputType == Void
+    static var rootIdentifier: KeyPath<Self, RootSceneType> { get }
 }
 
 public extension Storyboard {
@@ -86,11 +88,11 @@ public extension Storyboard {
         return segue(to: sceneIdentifier, transition: transition, mapPayload: { $0 })
     }
 
-//    public func instantiateRootViewController() -> UIViewController {
-//        return instantiateViewController(withPayload: (), identifier: rootIdentifier)
-//    }
+    public func instantiateRootViewController() -> UIViewController {
+        return instantiateViewController(withPayload: (), identifier: Self.rootIdentifier)
+    }
 
-    func instantiateViewController<InputType, S: Scene>(withPayload payload: InputType,
+    fileprivate func instantiateViewController<InputType, S: Scene>(withPayload payload: InputType,
                                                         identifier: KeyPath<Self, S>) -> UIViewController
         where S.InputType == InputType {
             let scene = self[keyPath: identifier]
