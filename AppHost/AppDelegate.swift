@@ -4,11 +4,11 @@ import SDK
 class PAXStoryboard: Storyboard {
     var rootScene: TabBarScene!
     var naviagtionSceneA0: NavigationScene!
-    var sceneA0: SampleScene!
+    var sceneA0: StaticScene!
     var sceneA1: SampleScene!
     var sceneA2: SampleScene!
     var naviagtionSceneB0: NavigationScene!
-    var sceneB0: SampleScene!
+    var sceneB0: StaticScene!
 }
 
 class RootViewControllerAssembly: Assembly {
@@ -36,19 +36,19 @@ private extension StoryboardAssembly {
 
     var rootScene: TabBarScene {
         return provide(instance: TabBarScene(scenes: [
-            naviagtionSceneA0,
-            naviagtionSceneB0,
+            storyboard.connection(to: \.naviagtionSceneA0),
+            storyboard.connection(to: \.naviagtionSceneB0),
             ]))
     }
 
     var naviagtionSceneA0: NavigationScene {
-        return provide(instance: NavigationScene(rootScene: StaticScene(scene: sceneA0, input: 1)))
+        return provide(instance: NavigationScene(rootScene: storyboard.connection(to: \.sceneA0)))
     }
 
-    var sceneA0: SampleScene {
-        return provide(instance: SampleScene(), complete: { scene in
-            scene.completionSegue = self.storyboard.segue(to: \.sceneA1, transition: PushSegue())
-        })
+    var sceneA0: StaticScene {
+        let scene = SampleScene()
+        scene.completionSegue = self.storyboard.segue(to: \.sceneA1, transition: PushSegue())
+        return provide(instance: StaticScene(scene: scene, input: 1))
     }
 
     var sceneA1: SampleScene {
@@ -59,18 +59,18 @@ private extension StoryboardAssembly {
 
     var sceneA2: SampleScene {
         return provide(instance: SampleScene(), complete: { scene in
-            scene.completionSegue = self.storyboard.segue(to: \.sceneB0, transition: ActivationgSegue())
+            scene.completionSegue = self.storyboard.segue(to: \.sceneB0, transition: ActivationgSegue(), mapPayload: { (p: Int) in () })
         })
     }
 
     var naviagtionSceneB0: NavigationScene {
-        return provide(instance: NavigationScene(rootScene: StaticScene(scene: sceneB0, input: 1)))
+        return provide(instance: NavigationScene(rootScene: storyboard.connection(to: \.sceneB0)))
     }
 
-    var sceneB0: SampleScene {
-        return provide(instance: SampleScene(), complete: { scene in
-            scene.completionSegue = self.storyboard.segue(to: \.sceneA0, transition: PushSegue())
-        })
+    var sceneB0: StaticScene {
+        let scene = SampleScene()
+        scene.completionSegue = self.storyboard.segue(to: \.sceneA0, transition: ActivationgSegue(), mapPayload: { (p: Int) in () })
+        return provide(instance: StaticScene(scene: scene, input: 10))
     }
 }
 

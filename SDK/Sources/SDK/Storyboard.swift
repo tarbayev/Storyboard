@@ -14,17 +14,32 @@ public protocol SegueTransition {
                  identifier: AnyKeyPath)
 }
 
+public class Connection {
+
+    init<B: Storyboard, S: Scene>(storyboard: B,
+               destiantionIdenditifier: KeyPath<B, S>)
+        where S.InputType == Void {
+            instantiateViewController = {
+                storyboard.instantiateViewController(withPayload: (), identifier: destiantionIdenditifier)
+            }
+    }
+
+    public let instantiateViewController: () -> UIViewController
+}
+
 public class Segue<PayloadType> {
 
     let perform: (PayloadType, UIViewController) -> Void
 
-    init<B: Storyboard, S: Scene>(storyboard: B,
-               destiantionIdenditifier: KeyPath<B, S>,
-               transition: SegueTransition)
-        where S.InputType == PayloadType {
+    init<B: Storyboard, S: Scene, P>(storyboard: B,
+                                  destiantionIdenditifier: KeyPath<B, S>,
+                                  transition: SegueTransition,
+                                  mapPayload: @escaping (PayloadType) -> P)
+        where S.InputType == P
+    {
             perform = { payload, sourceViewController in
                 transition.perform(sourceViewController: sourceViewController,
-                                   destinationViewController: storyboard.instantiateViewController(withPayload: payload, identifier: destiantionIdenditifier),
+                                   destinationViewController: storyboard.instantiateViewController(withPayload: mapPayload(payload), identifier: destiantionIdenditifier),
                                    identifier: destiantionIdenditifier)
             }
     }
@@ -49,10 +64,26 @@ public protocol Storyboard {
 
 public extension Storyboard {
 
-    public func segue<PayloadType, S: Scene>(to sceneIdentifier: KeyPath<Self, S>, transition: SegueTransition) -> Segue<PayloadType>
-         where S.InputType == PayloadType, S.InstanceType == UIViewController
+    public func connection<S: Scene>(to sceneIdentifier: KeyPath<Self, S>) -> Connection
+        where S.InputType == Void {
+        return Connection(storyboard: self, destiantionIdenditifier: sceneIdentifier)
+    }
+
+    public func segue<PayloadType, FinalPayloadType, S: Scene>
+        (to sceneIdentifier: KeyPath<Self, S>,
+         transition: SegueTransition,
+         mapPayload: @escaping (PayloadType) -> FinalPayloadType) -> Segue<PayloadType>
+        where S.InputType == FinalPayloadType, S.InstanceType == UIViewController
     {
-        return Segue(storyboard: self, destiantionIdenditifier: sceneIdentifier, transition: transition)
+        return Segue(storyboard: self, destiantionIdenditifier: sceneIdentifier, transition: transition, mapPayload: mapPayload)
+    }
+
+    public func segue<PayloadType, S: Scene>
+        (to sceneIdentifier: KeyPath<Self, S>,
+         transition: SegueTransition) -> Segue<PayloadType>
+        where S.InputType == PayloadType, S.InstanceType == UIViewController
+    {
+        return segue(to: sceneIdentifier, transition: transition, mapPayload: { $0 })
     }
 
 //    public func instantiateRootViewController() -> UIViewController {
@@ -113,6 +144,7 @@ extension UIViewController {
         case let tabBarController as UITabBarController:
             for viewController in tabBarController.viewControllers! {
                 if viewController.revealViewController(withIdentifier: identifier) {
+                    tabBarController.selectedViewController = viewController
                     return true
                 }
             }
@@ -164,9 +196,9 @@ public struct StaticScene: Scene {
 public class TabBarScene: Scene {
     let loadViewControllers: () -> [UIViewController]
 
-    public init<S: Scene>(scenes: [S]) where S.InputType == Void {
+    public init(scenes: [Connection]) {
         loadViewControllers = {
-            scenes.map { $0.instantiateViewController(withPayload: ()) }
+            scenes.map { $0.instantiateViewController() }
         }
     }
 
@@ -182,9 +214,9 @@ public class TabBarScene: Scene {
 public class NavigationScene: Scene {
     let loadRootViewController: () -> UIViewController
 
-    public init<S: Scene>(rootScene: S) where S.InputType == Void {
+    public init(rootScene: Connection) {
         loadRootViewController = {
-            rootScene.instantiateViewController(withPayload: ())
+            rootScene.instantiateViewController()
         }
     }
 
