@@ -9,7 +9,7 @@ class SampleScene : Assembly, Scene, AssemblyAwakable {
         assert(completionSegue != nil)
     }
 
-    func instantiateViewController(withPayload payload: Int) -> SampleViewController {
+    func instantiateViewController(withPayload payload: Int) -> UIViewController {
         return provide(instance: SampleViewController(input: payload, completionSegue: completionSegue), complete: { viewController in
             viewController.title = payload.description
         })

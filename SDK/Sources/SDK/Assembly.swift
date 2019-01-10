@@ -41,13 +41,20 @@ open class Assembly {
         stackDepth -= 1
 
         if stackDepth == 0 {
-            let tempCompleters = completers
 
-            completers = []
+            stackDepth += 1
 
-            tempCompleters.forEach { complete in
-                complete()
+            while completers.count > 0 {
+                let tempCompleters = completers
+
+                completers = []
+
+                tempCompleters.forEach { complete in
+                    complete()
+                }
             }
+
+            stackDepth -= 1
 
             if rootKey != nil {
                 instances.removeValue(forKey: rootKey)
