@@ -6,6 +6,8 @@ public protocol Scene {
     associatedtype InstanceType: UIViewController
 
     func instantiateViewController(withPayload payload: InputType) -> InstanceType
+
+    func didWireUp()
 }
 
 public protocol SegueTransition {
@@ -17,10 +19,11 @@ public protocol SegueTransition {
 public class Connection {
 
     init<B: Storyboard, S: Scene>(storyboard: B,
-               destiantionIdenditifier: KeyPath<B, S>)
-        where S.InputType == Void {
+               destiantionIdenditifier: KeyPath<B, S>,
+               payload: S.InputType)
+    {
             instantiateViewController = {
-                storyboard.instantiateViewController(withPayload: (), identifier: destiantionIdenditifier)
+                storyboard.instantiateViewController(withPayload: payload, identifier: destiantionIdenditifier)
             }
     }
 
@@ -62,13 +65,21 @@ public protocol Storyboard {
 
     associatedtype RootSceneType: Scene where RootSceneType.InputType == Void
     static var rootIdentifier: KeyPath<Self, RootSceneType> { get }
+
+    func wireUp()
 }
 
 public extension Storyboard {
 
+    public func connection<S: Scene>
+        (to sceneIdentifier: KeyPath<Self, S>,
+         payload: S.InputType) -> Connection {
+        return Connection(storyboard: self, destiantionIdenditifier: sceneIdentifier, payload: payload)
+    }
+
     public func connection<S: Scene>(to sceneIdentifier: KeyPath<Self, S>) -> Connection
         where S.InputType == Void {
-        return Connection(storyboard: self, destiantionIdenditifier: sceneIdentifier)
+            return connection(to: sceneIdentifier, payload: ())
     }
 
     public func segue<PayloadType, FinalPayloadType, S: Scene>
@@ -89,6 +100,7 @@ public extension Storyboard {
     }
 
     public func instantiateRootViewController() -> UIViewController {
+        wireUp()
         return instantiateViewController(withPayload: (), identifier: Self.rootIdentifier)
     }
 
@@ -175,20 +187,6 @@ public class ActivationgSegue: SegueTransition {
     }
 }
 
-public struct StaticScene: Scene {
-    let instantiateViewController: () -> UIViewController
-
-    public init<S: Scene>(scene: S, input: S.InputType) {
-        instantiateViewController = {
-            scene.instantiateViewController(withPayload: input)
-        }
-    }
-
-    public func instantiateViewController(withPayload payload: Void) -> UIViewController {
-        return instantiateViewController()
-    }
-}
-
 // extension Scene {
 //    func staticScene<S: Scene>(withInput: InputType) -> S where S.InputType == Void {
 //        return StaticScene(scene: self, input: withInput)
@@ -196,6 +194,7 @@ public struct StaticScene: Scene {
 // }
 
 public class TabBarScene: Scene {
+
     let loadViewControllers: () -> [UIViewController]
 
     public init(scenes: [Connection]) {
@@ -203,6 +202,8 @@ public class TabBarScene: Scene {
             scenes.map { $0.instantiateViewController() }
         }
     }
+
+    public func didWireUp() {}
 
     public func instantiateViewController(withPayload payload: ()) -> UITabBarController {
         let tabBarController = UITabBarController()
@@ -214,6 +215,7 @@ public class TabBarScene: Scene {
 }
 
 public class NavigationScene: Scene {
+
     let loadRootViewController: () -> UIViewController
 
     public init(rootScene: Connection) {
@@ -221,6 +223,8 @@ public class NavigationScene: Scene {
             rootScene.instantiateViewController()
         }
     }
+
+    public func didWireUp() {}
 
     public func instantiateViewController(withPayload payload: ()) -> UINavigationController {
         return UINavigationController(rootViewController: loadRootViewController())

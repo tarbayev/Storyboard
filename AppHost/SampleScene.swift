@@ -1,11 +1,11 @@
 import UIKit
 import SDK
 
-class SampleScene : Assembly, Scene, AssemblyAwakable {
+class SampleScene : Assembly, Scene {
 
     var completionSegue: Segue<Int>!
 
-    func awakeFromAssembly() {
+    public func didWireUp() {
         assert(completionSegue != nil)
     }
 
