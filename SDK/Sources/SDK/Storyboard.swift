@@ -1,12 +1,14 @@
 import UIKit
 
-public protocol Scene {
+public protocol StoryboardAwakable {
+    func didWireUp()
+}
+
+public protocol Scene: StoryboardAwakable {
     associatedtype InputType
     associatedtype InstanceType: UIViewController
 
     func instantiateViewController(withPayload payload: InputType) -> InstanceType
-
-    func didWireUp()
 }
 
 public protocol SegueTransition {
@@ -52,20 +54,26 @@ public class Segue<PayloadType> {
     }
 }
 
-fileprivate var ViewControllerIdentifiers: [UIViewController:AnyKeyPath] = [:]
+fileprivate var ViewControllerIdentifiers = NSMapTable<UIViewController, AnyKeyPath>.weakToStrongObjects()
 
 extension UIViewController {
 
     var identifier: AnyKeyPath? {
-        return ViewControllerIdentifiers[self]
+        return ViewControllerIdentifiers.object(forKey: self)
     }
 }
 
-public protocol Storyboard {
+public protocol Storyboard: class {
 
     associatedtype RootSceneType: Scene where RootSceneType.InputType == Void
     static var rootIdentifier: KeyPath<Self, RootSceneType> { get }
 }
+
+class SetClass<T: Hashable> {
+    var set: Set<T> = []
+}
+
+fileprivate var StoryboardSceneKeys = NSMapTable<AnyObject, SetClass<AnyKeyPath>>.weakToStrongObjects()
 
 public struct SceneConnector<S: Storyboard, SS: Scene> {
 
@@ -88,6 +96,14 @@ public struct SceneConnector<S: Storyboard, SS: Scene> {
                                                destiantionIdenditifier: sceneIdentifier,
                                                transition: transition,
                                                mapPayload: mapPayload)
+
+        let keys = StoryboardSceneKeys.object(forKey: storyboard) ?? {
+            let keySet = SetClass<AnyKeyPath>()
+            StoryboardSceneKeys.setObject(keySet, forKey: storyboard)
+            return keySet
+        } ()
+
+        keys.set.insert(sceneIdentifier)
     }
 
     public func connect<PayloadType, DS: Scene>
@@ -97,7 +113,6 @@ public struct SceneConnector<S: Storyboard, SS: Scene> {
         where DS.InputType == PayloadType, DS.InstanceType == UIViewController
     {
         connect(segueKey, to: sceneIdentifier, transition: transition, mapPayload: { $0 })
-        sourceScene.didWireUp()
     }
 }
 
@@ -123,6 +138,13 @@ public extension Storyboard {
     }
 
     public func instantiateRootViewController() -> UIViewController {
+        if let keys = StoryboardSceneKeys.object(forKey: self)?.set {
+            keys.forEach { key in
+                let scene = self[keyPath: key] as! StoryboardAwakable
+                scene.didWireUp()
+            }
+            StoryboardSceneKeys.removeObject(forKey: self)
+        }
         return instantiateViewController(withPayload: (), identifier: Self.rootIdentifier)
     }
 
@@ -132,7 +154,7 @@ public extension Storyboard {
             let scene = self[keyPath: identifier]
             let viewController = scene.instantiateViewController(withPayload: payload)
 
-            ViewControllerIdentifiers[viewController] = identifier
+            ViewControllerIdentifiers.setObject(identifier, forKey: viewController)
 
             return viewController
     }
