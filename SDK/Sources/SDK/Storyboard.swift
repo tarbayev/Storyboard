@@ -32,14 +32,13 @@ public class Connection {
 
 public class Segue<PayloadType> {
 
-    let perform: (PayloadType, UIViewController) -> Void
+    private let perform: (PayloadType, UIViewController) -> Void
 
-    init<B: Storyboard, S: Scene, P>(storyboard: B,
-                                  destiantionIdenditifier: KeyPath<B, S>,
-                                  transition: SegueTransition,
-                                  mapPayload: @escaping (PayloadType) -> P)
-        where S.InputType == P
-    {
+    init<B, S, P>(storyboard: B,
+                  destiantionIdenditifier: KeyPath<B, S>,
+                  transition: SegueTransition,
+                  mapPayload: @escaping (PayloadType) -> P)
+        where B: Storyboard, S: Scene, P == S.InputType {
             perform = { payload, sourceViewController in
                 transition.perform(sourceViewController: sourceViewController,
                                    destinationViewController: storyboard.instantiateViewController(withPayload: mapPayload(payload), identifier: destiantionIdenditifier),
@@ -82,23 +81,47 @@ public extension Storyboard {
             return connection(to: sceneIdentifier, payload: ())
     }
 
-    public func segue<PayloadType, FinalPayloadType, S: Scene>
-        (to sceneIdentifier: KeyPath<Self, S>,
+    public func connect<PayloadType, FinalPayloadType, SS: Scene, DS: Scene>
+        (_ sourceScene: SS,
+         _ segueKey: ReferenceWritableKeyPath<SS, Segue<PayloadType>?>,
+         to sceneIdentifier: KeyPath<Self, DS>,
          transition: SegueTransition,
-         mapPayload: @escaping (PayloadType) -> FinalPayloadType) -> Segue<PayloadType>
-        where S.InputType == FinalPayloadType, S.InstanceType == UIViewController
+         mapPayload: @escaping (PayloadType) -> FinalPayloadType)
+        where DS.InputType == FinalPayloadType, DS.InstanceType == UIViewController
     {
-        return Segue(storyboard: self, destiantionIdenditifier: sceneIdentifier, transition: transition, mapPayload: mapPayload)
+        sourceScene[keyPath: segueKey] = Segue(storyboard: self,
+                                         destiantionIdenditifier: sceneIdentifier,
+                                         transition: transition,
+                                         mapPayload: mapPayload)
     }
 
-    public func segue<PayloadType, S: Scene>
-        (to sceneIdentifier: KeyPath<Self, S>,
-         transition: SegueTransition) -> Segue<PayloadType>
-        where S.InputType == PayloadType, S.InstanceType == UIViewController
+    public func connect<PayloadType, SS: Scene, DS: Scene>
+        (_ sourceScene: SS,
+         _ segueKey: ReferenceWritableKeyPath<SS, Segue<PayloadType>?>,
+         to sceneIdentifier: KeyPath<Self, DS>,
+         transition: SegueTransition)
+        where DS.InputType == PayloadType, DS.InstanceType == UIViewController
     {
-        return segue(to: sceneIdentifier, transition: transition, mapPayload: { $0 })
+        connect(sourceScene, segueKey, to: sceneIdentifier, transition: transition, mapPayload: { $0 })
     }
 
+//    public func segue<PayloadType, FinalPayloadType, S: Scene>
+//        (to sceneIdentifier: KeyPath<Self, S>,
+//         transition: SegueTransition,
+//         mapPayload: @escaping (PayloadType) -> FinalPayloadType) -> Segue<PayloadType>
+//        where S.InputType == FinalPayloadType, S.InstanceType == UIViewController
+//    {
+//        return Segue(storyboard: self, destiantionIdenditifier: sceneIdentifier, transition: transition, mapPayload: mapPayload)
+//    }
+//
+//    public func segue<PayloadType, S: Scene>
+//        (to sceneIdentifier: KeyPath<Self, S>,
+//         transition: SegueTransition) -> Segue<PayloadType>
+//        where S.InputType == PayloadType, S.InstanceType == UIViewController
+//    {
+//        return segue(to: sceneIdentifier, transition: transition, mapPayload: { $0 })
+//    }
+//
     public func instantiateRootViewController() -> UIViewController {
         wireUp()
         return instantiateViewController(withPayload: (), identifier: Self.rootIdentifier)
