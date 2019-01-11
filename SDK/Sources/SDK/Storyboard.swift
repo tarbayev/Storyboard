@@ -68,6 +68,40 @@ public protocol Storyboard {
     func wireUp()
 }
 
+public struct SceneConnector<S: Storyboard, SS: Scene> {
+
+    private let storyboard: S
+    private let sourceScene: SS
+
+    init(storyboard: S, sourceScene: SS) {
+        self.storyboard = storyboard
+        self.sourceScene = sourceScene
+    }
+
+    public func connect<PayloadType, FinalPayloadType, DS: Scene>
+        (_ segueKey: ReferenceWritableKeyPath<SS, Segue<PayloadType>?>,
+         to sceneIdentifier: KeyPath<S, DS>,
+         transition: SegueTransition,
+         mapPayload: @escaping (PayloadType) -> FinalPayloadType)
+        where DS.InputType == FinalPayloadType, DS.InstanceType == UIViewController
+    {
+        sourceScene[keyPath: segueKey] = Segue(storyboard: storyboard,
+                                               destiantionIdenditifier: sceneIdentifier,
+                                               transition: transition,
+                                               mapPayload: mapPayload)
+    }
+
+    public func connect<PayloadType, DS: Scene>
+        (_ segueKey: ReferenceWritableKeyPath<SS, Segue<PayloadType>?>,
+         to sceneIdentifier: KeyPath<S, DS>,
+         transition: SegueTransition)
+        where DS.InputType == PayloadType, DS.InstanceType == UIViewController
+    {
+        connect(segueKey, to: sceneIdentifier, transition: transition, mapPayload: { $0 })
+        sourceScene.didWireUp()
+    }
+}
+
 public extension Storyboard {
 
     public func connection<S: Scene>
@@ -81,47 +115,14 @@ public extension Storyboard {
             return connection(to: sceneIdentifier, payload: ())
     }
 
-    public func connect<PayloadType, FinalPayloadType, SS: Scene, DS: Scene>
+    public func connect<SS: Scene>
         (_ sourceScene: SS,
-         _ segueKey: ReferenceWritableKeyPath<SS, Segue<PayloadType>?>,
-         to sceneIdentifier: KeyPath<Self, DS>,
-         transition: SegueTransition,
-         mapPayload: @escaping (PayloadType) -> FinalPayloadType)
-        where DS.InputType == FinalPayloadType, DS.InstanceType == UIViewController
+         _ connection: (SceneConnector<Self, SS>) -> Void)
     {
-        sourceScene[keyPath: segueKey] = Segue(storyboard: self,
-                                         destiantionIdenditifier: sceneIdentifier,
-                                         transition: transition,
-                                         mapPayload: mapPayload)
+        let connector = SceneConnector(storyboard: self, sourceScene: sourceScene)
+        connection(connector)
     }
 
-    public func connect<PayloadType, SS: Scene, DS: Scene>
-        (_ sourceScene: SS,
-         _ segueKey: ReferenceWritableKeyPath<SS, Segue<PayloadType>?>,
-         to sceneIdentifier: KeyPath<Self, DS>,
-         transition: SegueTransition)
-        where DS.InputType == PayloadType, DS.InstanceType == UIViewController
-    {
-        connect(sourceScene, segueKey, to: sceneIdentifier, transition: transition, mapPayload: { $0 })
-    }
-
-//    public func segue<PayloadType, FinalPayloadType, S: Scene>
-//        (to sceneIdentifier: KeyPath<Self, S>,
-//         transition: SegueTransition,
-//         mapPayload: @escaping (PayloadType) -> FinalPayloadType) -> Segue<PayloadType>
-//        where S.InputType == FinalPayloadType, S.InstanceType == UIViewController
-//    {
-//        return Segue(storyboard: self, destiantionIdenditifier: sceneIdentifier, transition: transition, mapPayload: mapPayload)
-//    }
-//
-//    public func segue<PayloadType, S: Scene>
-//        (to sceneIdentifier: KeyPath<Self, S>,
-//         transition: SegueTransition) -> Segue<PayloadType>
-//        where S.InputType == PayloadType, S.InstanceType == UIViewController
-//    {
-//        return segue(to: sceneIdentifier, transition: transition, mapPayload: { $0 })
-//    }
-//
     public func instantiateRootViewController() -> UIViewController {
         wireUp()
         return instantiateViewController(withPayload: (), identifier: Self.rootIdentifier)

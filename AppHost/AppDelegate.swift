@@ -20,21 +20,21 @@ final class PAXStoryboard: Storyboard {
 
     func wireUp() {
 
-        connect(sceneA0, \.completionSegue, to: \.sceneA1, transition: PushTransition())
+        connect(sceneA0) { c in
+            c.connect(\.completionSegue, to: \.sceneA1, transition: PushTransition())
+        }
 
-        connect(sceneA1, \.completionSegue, to: \.sceneA2, transition: PushTransition())
+        connect(sceneA1) { c in
+            c.connect(\.completionSegue, to: \.sceneA2, transition: PushTransition())
+        }
 
-        connect(sceneA2, \.completionSegue, to: \.sceneB0, transition: ActivationgTransition())
+        connect(sceneA2) { c in
+            c.connect(\.completionSegue, to: \.sceneB0, transition: ActivationgTransition())
+        }
 
-        connect(sceneB0, \.completionSegue, to: \.sceneA0, transition: ActivationgTransition())
-
-//        sceneA0.completionSegue = segue(to: \.sceneA1, transition: PushTransition())
-//
-//        sceneA1.completionSegue = segue(to: \.sceneA2, transition: PushTransition())
-//
-//        sceneA2.completionSegue = segue(to: \.sceneB0, transition: ActivationgTransition())
-//
-//        sceneB0.completionSegue = segue(to: \.sceneA0, transition: ActivationgTransition())
+        connect(sceneB0) { c in
+            c.connect(\.completionSegue, to: \.sceneA0, transition: ActivationgTransition())
+        }
     }
 }
 
