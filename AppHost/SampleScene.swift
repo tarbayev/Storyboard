@@ -10,8 +10,9 @@ class SampleScene : Assembly, Scene {
     }
 
     func instantiateViewController(withPayload payload: Int) -> UIViewController {
-        return provide(instance: SampleViewController(input: payload, completionSegue: completionSegue), complete: { viewController in
+        return provide(instance: SampleViewController(input: payload), complete: { viewController in
             viewController.title = payload.description
+            viewController.completion = self.completionSegue.invocation(with: viewController)
         })
     }
 }
@@ -19,11 +20,10 @@ class SampleScene : Assembly, Scene {
 class SampleViewController: UIViewController {
 
     let input: Int
-    let completionSegue: Segue<Int>
+    var completion: ((Int) -> ())!
 
-    init(input: Int, completionSegue: Segue<Int>) {
+    init(input: Int) {
         self.input = input
-        self.completionSegue = completionSegue
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -32,6 +32,6 @@ class SampleViewController: UIViewController {
     }
 
     @IBAction func complete() {
-        completionSegue.perform(withInput: input + 1, sourceViewController: self)
+        completion(input + 1)
     }
 }

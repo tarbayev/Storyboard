@@ -12,28 +12,33 @@ final class PAXStoryboard: Storyboard {
     lazy var naviagtionSceneA0 = NavigationScene(rootScene: connection(to: \.sceneA0, payload: 1))
     lazy var naviagtionSceneB0 = NavigationScene(rootScene: connection(to: \.sceneB0, payload: 10))
 
-    var sceneA0: SampleScene!
-    var sceneA1: SampleScene!
-    var sceneA2: SampleScene!
-
-    var sceneB0: SampleScene!
-
-    func wireUp() {
-
-        connect(sceneA0) { c in
-            c.connect(\.completionSegue, to: \.sceneA1, transition: PushTransition())
+    var sceneA0: SampleScene! {
+        didSet {
+            connect(sceneA0) { c in
+                c.connect(\.completionSegue, to: \.sceneA1, transition: PushTransition())
+            }
         }
-
-        connect(sceneA1) { c in
-            c.connect(\.completionSegue, to: \.sceneA2, transition: PushTransition())
+    }
+    var sceneA1: SampleScene! {
+        didSet {
+            connect(sceneA1) { c in
+                c.connect(\.completionSegue, to: \.sceneA2, transition: PushTransition())
+            }
         }
-
-        connect(sceneA2) { c in
-            c.connect(\.completionSegue, to: \.sceneB0, transition: ActivationgTransition())
+    }
+    var sceneA2: SampleScene! {
+        didSet {
+            connect(sceneA2) { c in
+                c.connect(\.completionSegue, to: \.sceneB0, transition: ActivatingTransition())
+            }
         }
+    }
 
-        connect(sceneB0) { c in
-            c.connect(\.completionSegue, to: \.sceneA0, transition: ActivationgTransition())
+    var sceneB0: SampleScene! {
+        didSet {
+            connect(sceneB0) { c in
+                c.connect(\.completionSegue, to: \.sceneA0, transition: ActivatingTransition())
+            }
         }
     }
 }

@@ -1,5 +1,4 @@
 import UIKit
-import ObjectiveC
 
 public protocol Scene {
     associatedtype InputType
@@ -46,8 +45,10 @@ public class Segue<PayloadType> {
             }
     }
 
-    public func perform(withInput input: PayloadType, sourceViewController: UIViewController) {
-        perform(input, sourceViewController)
+    public func invocation(with viewController: UIViewController) -> (PayloadType) -> Void {
+        return { payload in
+            self.perform(payload, viewController)
+        }
     }
 }
 
@@ -64,8 +65,6 @@ public protocol Storyboard {
 
     associatedtype RootSceneType: Scene where RootSceneType.InputType == Void
     static var rootIdentifier: KeyPath<Self, RootSceneType> { get }
-
-    func wireUp()
 }
 
 public struct SceneConnector<S: Storyboard, SS: Scene> {
@@ -124,7 +123,6 @@ public extension Storyboard {
     }
 
     public func instantiateRootViewController() -> UIViewController {
-        wireUp()
         return instantiateViewController(withPayload: (), identifier: Self.rootIdentifier)
     }
 
@@ -202,7 +200,7 @@ extension UIViewController {
     }
 }
 
-public class ActivationgTransition: SegueTransition {
+public class ActivatingTransition: SegueTransition {
 
     public init() {}
 
