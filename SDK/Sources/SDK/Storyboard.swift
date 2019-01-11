@@ -169,6 +169,15 @@ public class PushTransition: SegueTransition {
     }
 }
 
+public class PresentingTransition: SegueTransition {
+
+    public init() {}
+
+    public func perform(sourceViewController: UIViewController, destinationViewController: @autoclosure () -> UIViewController, identifier: AnyKeyPath) {
+        sourceViewController.present(destinationViewController(), animated: true, completion: nil)
+    }
+}
+
 //public class ReplacingSegue<Destination: Scene>: Segue<Destination.InputType> {
 //    private let destination: Destination
 //
@@ -214,6 +223,11 @@ extension UIViewController {
                     viewController = parent
                 }
 
+                return viewController.revealViewController(withIdentifier: identifier)
+            }
+
+            if let viewController = self.presentingViewController {
+                self.dismiss(animated: true, completion: nil)
                 return viewController.revealViewController(withIdentifier: identifier)
             }
         }

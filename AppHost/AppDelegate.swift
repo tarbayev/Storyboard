@@ -13,31 +13,39 @@ final class PAXStoryboard: Storyboard {
     lazy var naviagtionSceneB0 = NavigationScene(rootScene: connection(to: \.sceneB0, payload: 10))
 
     var sceneA0: SampleScene! {
-        didSet {
-            connect(sceneA0) { c in
+        willSet(scene) {
+            connect(scene) { c in
                 c.connect(\.completionSegue, to: \.sceneA1, transition: PushTransition())
             }
         }
     }
     var sceneA1: SampleScene! {
-        didSet {
-            connect(sceneA1) { c in
+        willSet(scene) {
+            connect(scene) { c in
                 c.connect(\.completionSegue, to: \.sceneA2, transition: PushTransition())
             }
         }
     }
     var sceneA2: SampleScene! {
-        didSet {
-            connect(sceneA2) { c in
+        willSet(scene) {
+            connect(scene) { c in
                 c.connect(\.completionSegue, to: \.sceneB0, transition: ActivatingTransition())
             }
         }
     }
 
     var sceneB0: SampleScene! {
-        didSet {
-            connect(sceneB0) { c in
-                c.connect(\.completionSegue, to: \.sceneA0, transition: ActivatingTransition())
+        willSet(scene) {
+            connect(scene) { c in
+                c.connect(\.completionSegue, to: \.sceneC0, transition: PresentingTransition())
+            }
+        }
+    }
+
+    var sceneC0: SampleScene! {
+        willSet(scene) {
+            connect(scene) { c in
+                c.connect(\.completionSegue, to: \.sceneB0, transition: ActivatingTransition())
             }
         }
     }
@@ -58,6 +66,8 @@ class StoryboardAssembly: Assembly {
             storyboard.sceneA2 = SampleScene()
 
             storyboard.sceneB0 = SampleScene()
+
+            storyboard.sceneC0 = SampleScene()
         }
     }
 
