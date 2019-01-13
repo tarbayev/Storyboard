@@ -45,7 +45,7 @@ final class PAXStoryboard: Storyboard {
     var sceneC0: SampleScene! {
         willSet(scene) {
             connect(scene) { c in
-                c.connect(\.completionSegue, to: \.sceneB0, transition: ActivatingTransition())
+                c.connect(\.completionSegue, to: \.sceneA0, transition: ActivatingTransition())
             }
         }
     }

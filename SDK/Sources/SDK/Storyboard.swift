@@ -54,11 +54,25 @@ public class Segue<PayloadType> {
     }
 }
 
-fileprivate var ViewControllerIdentifiers = NSMapTable<UIViewController, AnyKeyPath>.weakToStrongObjects()
+fileprivate var ViewControllerIdentifiers = NSMapTable<UIViewController, SceneIdentifier>.weakToStrongObjects()
+
+class SceneIdentifier: NSObject {
+    let keyPath: AnyKeyPath
+    init(_ keyPath: AnyKeyPath) {
+        self.keyPath = keyPath
+    }
+
+    override func isEqual(_ object: Any?) -> Bool {
+        if let identifer = object as? SceneIdentifier {
+            return identifer.keyPath == keyPath
+        }
+        return false
+    }
+}
 
 extension UIViewController {
 
-    var identifier: AnyKeyPath? {
+    var sceneIdentifier: SceneIdentifier? {
         return ViewControllerIdentifiers.object(forKey: self)
     }
 }
@@ -154,7 +168,7 @@ public extension Storyboard {
             let scene = self[keyPath: identifier]
             let viewController = scene.instantiateViewController(withPayload: payload)
 
-            ViewControllerIdentifiers.setObject(identifier, forKey: viewController)
+            ViewControllerIdentifiers.setObject(SceneIdentifier(identifier), forKey: viewController)
 
             return viewController
     }
@@ -198,41 +212,81 @@ public class PresentingTransition: SegueTransition {
 //    }
 //}
 //
+
 extension UIViewController {
+
+    @objc
+    func allowedChildrenForUnwinding(from sourceViewController: UIViewController) -> [UIViewController] {
+        return children.filter { $0 != sourceViewController }
+    }
+
     @discardableResult
-    func revealViewController(withIdentifier identifier: AnyKeyPath) -> Bool {
-        switch self {
-        case let navigationController as UINavigationController:
-            if let viewController = navigationController.viewControllers.first(where: { $0.identifier == identifier }) {
-                navigationController.popToViewController(viewController, animated: true)
+    func unwind(toViewControllerWithSceneIdentifier identifier: SceneIdentifier) -> Bool {
+        return unwind(from: self, toViewControllerWithSceneIdentifier: identifier)
+    }
+
+    @objc
+    func unwind(towards: UIViewController) {
+        if towards.presentedViewController == self {
+            dismiss(animated: true, completion: nil)
+        }
+    }
+
+    @discardableResult
+    func unwind(from sourceViewController: UIViewController, toViewControllerWithSceneIdentifier identifier: SceneIdentifier) -> Bool {
+
+        if let viewController = allowedChildrenForUnwinding(from: sourceViewController)
+            .first(where: { $0.unwind(from: self, toViewControllerWithSceneIdentifier: identifier) }) {
+            unwind(towards: viewController)
+            return true
+        }
+
+        if sceneIdentifier == identifier {
+            return true
+        }
+
+        if let parent = parent, parent != sourceViewController {
+            if parent.unwind(from: self, toViewControllerWithSceneIdentifier: identifier) {
+                unwind(towards: parent)
                 return true
             }
+        }
 
-        case let tabBarController as UITabBarController:
-            for viewController in tabBarController.viewControllers! {
-                if viewController.revealViewController(withIdentifier: identifier) {
-                    tabBarController.selectedViewController = viewController
-                    return true
-                }
-            }
-
-        default:
-
-            if var viewController = self.parent {
-                while let parent = viewController.parent {
-                    viewController = parent
-                }
-
-                return viewController.revealViewController(withIdentifier: identifier)
-            }
-
-            if let viewController = self.presentingViewController {
-                self.dismiss(animated: true, completion: nil)
-                return viewController.revealViewController(withIdentifier: identifier)
+        if let presentingViewController = presentingViewController {
+            if presentingViewController.unwind(from: self, toViewControllerWithSceneIdentifier: identifier) {
+                unwind(towards: presentingViewController)
+                return true
             }
         }
 
         return false
+    }
+}
+
+extension UINavigationController {
+
+    override func allowedChildrenForUnwinding(from sourceViewController: UIViewController) -> [UIViewController] {
+        return super.allowedChildrenForUnwinding(from: sourceViewController).reversed()
+    }
+
+    override func unwind(towards: UIViewController) {
+        if viewControllers.contains(towards) {
+            popToViewController(towards, animated: true)
+        } else {
+            popToRootViewController(animated: true)
+        }
+
+        super.unwind(towards: towards)
+    }
+}
+
+extension UITabBarController {
+    override func unwind(towards: UIViewController) {
+        if viewControllers?.contains(towards) ?? false {
+            selectedViewController = towards
+        }
+
+        super.unwind(towards: towards)
     }
 }
 
@@ -241,15 +295,9 @@ public class ActivatingTransition: SegueTransition {
     public init() {}
 
     public func perform(sourceViewController: UIViewController, destinationViewController: @autoclosure () -> UIViewController, identifier: AnyKeyPath) {
-        sourceViewController.revealViewController(withIdentifier: identifier)
+        sourceViewController.unwind(toViewControllerWithSceneIdentifier: SceneIdentifier(identifier))
     }
 }
-
-// extension Scene {
-//    func staticScene<S: Scene>(withInput: InputType) -> S where S.InputType == Void {
-//        return StaticScene(scene: self, input: withInput)
-//    }
-// }
 
 public class TabBarScene: Scene {
 
