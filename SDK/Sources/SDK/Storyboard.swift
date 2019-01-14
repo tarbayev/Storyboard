@@ -54,21 +54,9 @@ public class Segue<PayloadType> {
     }
 }
 
+typealias SceneIdentifier = AnyKeyPath
+
 fileprivate var ViewControllerIdentifiers = NSMapTable<UIViewController, SceneIdentifier>.weakToStrongObjects()
-
-class SceneIdentifier: NSObject {
-    let keyPath: AnyKeyPath
-    init(_ keyPath: AnyKeyPath) {
-        self.keyPath = keyPath
-    }
-
-    override func isEqual(_ object: Any?) -> Bool {
-        if let identifer = object as? SceneIdentifier {
-            return identifer.keyPath == keyPath
-        }
-        return false
-    }
-}
 
 extension UIViewController {
 
@@ -168,7 +156,7 @@ public extension Storyboard {
             let scene = self[keyPath: identifier]
             let viewController = scene.instantiateViewController(withPayload: payload)
 
-            ViewControllerIdentifiers.setObject(SceneIdentifier(identifier), forKey: viewController)
+            ViewControllerIdentifiers.setObject(identifier, forKey: viewController)
 
             return viewController
     }
@@ -290,12 +278,12 @@ extension UITabBarController {
     }
 }
 
-public class ActivatingTransition: SegueTransition {
+public class UnwindingTransition: SegueTransition {
 
     public init() {}
 
     public func perform(sourceViewController: UIViewController, destinationViewController: @autoclosure () -> UIViewController, identifier: AnyKeyPath) {
-        sourceViewController.unwind(toViewControllerWithSceneIdentifier: SceneIdentifier(identifier))
+        sourceViewController.unwind(toViewControllerWithSceneIdentifier: identifier)
     }
 }
 
