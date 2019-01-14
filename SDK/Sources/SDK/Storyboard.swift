@@ -204,8 +204,20 @@ public class PresentingTransition: SegueTransition {
 extension UIViewController {
 
     @objc
-    func allowedChildrenForUnwinding(from sourceViewController: UIViewController) -> [UIViewController] {
+    public func allowedChildrenForUnwinding(from sourceViewController: UIViewController) -> [UIViewController] {
         return children.filter { $0 != sourceViewController }
+    }
+
+    @objc
+    public func unwind(towards viewController: UIViewController) {
+    }
+
+    func _unwind(towards viewController: UIViewController) {
+        if viewController.presentedViewController == self {
+            dismiss(animated: true, completion: nil)
+        } else {
+            unwind(towards: viewController)
+        }
     }
 
     @discardableResult
@@ -213,19 +225,11 @@ extension UIViewController {
         return unwind(from: self, toViewControllerWithSceneIdentifier: identifier)
     }
 
-    @objc
-    func unwind(towards: UIViewController) {
-        if towards.presentedViewController == self {
-            dismiss(animated: true, completion: nil)
-        }
-    }
-
-    @discardableResult
     func unwind(from sourceViewController: UIViewController, toViewControllerWithSceneIdentifier identifier: SceneIdentifier) -> Bool {
 
         if let viewController = allowedChildrenForUnwinding(from: sourceViewController)
             .first(where: { $0.unwind(from: self, toViewControllerWithSceneIdentifier: identifier) }) {
-            unwind(towards: viewController)
+            _unwind(towards: viewController)
             return true
         }
 
@@ -235,14 +239,14 @@ extension UIViewController {
 
         if let parent = parent, parent != sourceViewController {
             if parent.unwind(from: self, toViewControllerWithSceneIdentifier: identifier) {
-                unwind(towards: parent)
+                _unwind(towards: parent)
                 return true
             }
         }
 
         if let presentingViewController = presentingViewController {
             if presentingViewController.unwind(from: self, toViewControllerWithSceneIdentifier: identifier) {
-                unwind(towards: presentingViewController)
+                _unwind(towards: presentingViewController)
                 return true
             }
         }
@@ -253,28 +257,24 @@ extension UIViewController {
 
 extension UINavigationController {
 
-    override func allowedChildrenForUnwinding(from sourceViewController: UIViewController) -> [UIViewController] {
+    override public func allowedChildrenForUnwinding(from sourceViewController: UIViewController) -> [UIViewController] {
         return super.allowedChildrenForUnwinding(from: sourceViewController).reversed()
     }
 
-    override func unwind(towards: UIViewController) {
-        if viewControllers.contains(towards) {
-            popToViewController(towards, animated: true)
+    override public func unwind(towards viewController: UIViewController) {
+        if viewControllers.contains(viewController) {
+            popToViewController(viewController, animated: true)
         } else {
             popToRootViewController(animated: true)
         }
-
-        super.unwind(towards: towards)
     }
 }
 
 extension UITabBarController {
-    override func unwind(towards: UIViewController) {
-        if viewControllers?.contains(towards) ?? false {
-            selectedViewController = towards
+    override public func unwind(towards viewController: UIViewController) {
+        if viewControllers?.contains(viewController) ?? false {
+            selectedViewController = viewController
         }
-
-        super.unwind(towards: towards)
     }
 }
 
