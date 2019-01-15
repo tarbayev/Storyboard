@@ -12,9 +12,12 @@ public protocol Scene: StoryboardAwakable {
 }
 
 public protocol SegueTransition {
-    func perform(sourceViewController: UIViewController,
-                 destinationViewController: @autoclosure () -> UIViewController,
-                 identifier: AnyKeyPath)
+    associatedtype S: Scene
+    associatedtype B: Storyboard
+    func perform(withPayload payload: S.InputType,
+                 from sourceViewController: UIViewController,
+                 toScene identifier: KeyPath<B, S>,
+                 inStoryboard storyboard: B)
 }
 
 public class Connection {
@@ -35,15 +38,16 @@ public class Segue<PayloadType> {
 
     private let perform: (PayloadType, UIViewController) -> Void
 
-    init<B, S, P>(storyboard: B,
-                  destiantionIdenditifier: KeyPath<B, S>,
-                  transition: SegueTransition,
+    init<S, P, T>(storyboard: T.B,
+                  destiantionIdenditifier: KeyPath<T.B, S>,
+                  transition: T,
                   mapPayload: @escaping (PayloadType) -> P)
-        where B: Storyboard, S: Scene, P == S.InputType {
+        where S == T.S, P == S.InputType, T: SegueTransition {
             perform = { payload, sourceViewController in
-                transition.perform(sourceViewController: sourceViewController,
-                                   destinationViewController: storyboard.instantiateViewController(withPayload: mapPayload(payload), identifier: destiantionIdenditifier),
-                                   identifier: destiantionIdenditifier)
+                transition.perform(withPayload: mapPayload(payload),
+                                   from: sourceViewController,
+                                   toScene: destiantionIdenditifier,
+                                   inStoryboard: storyboard)
             }
     }
 
@@ -77,22 +81,22 @@ class SetClass<T: Hashable> {
 
 fileprivate var StoryboardSceneKeys = NSMapTable<AnyObject, SetClass<AnyKeyPath>>.weakToStrongObjects()
 
-public struct SceneConnector<S: Storyboard, SS: Scene> {
+public struct SceneConnector<B: Storyboard, S: Scene> {
 
-    private let storyboard: S
-    private let sourceScene: SS
+    private let storyboard: B
+    private let sourceScene: S
 
-    init(storyboard: S, sourceScene: SS) {
+    init(storyboard: B, sourceScene: S) {
         self.storyboard = storyboard
         self.sourceScene = sourceScene
     }
 
-    public func connect<PayloadType, FinalPayloadType, DS: Scene>
-        (_ segueKey: ReferenceWritableKeyPath<SS, Segue<PayloadType>?>,
-         to sceneIdentifier: KeyPath<S, DS>,
-         transition: SegueTransition,
+    public func connect<PayloadType, FinalPayloadType, DS, T>
+        (_ segueKey: ReferenceWritableKeyPath<S, Segue<PayloadType>?>,
+         to sceneIdentifier: KeyPath<B, DS>,
+         transition: T,
          mapPayload: @escaping (PayloadType) -> FinalPayloadType)
-        where DS.InputType == FinalPayloadType, DS.InstanceType == UIViewController
+        where DS.InputType == FinalPayloadType, T: SegueTransition, T.B == B, T.S == DS
     {
         sourceScene[keyPath: segueKey] = Segue(storyboard: storyboard,
                                                destiantionIdenditifier: sceneIdentifier,
@@ -108,11 +112,11 @@ public struct SceneConnector<S: Storyboard, SS: Scene> {
         keys.set.insert(sceneIdentifier)
     }
 
-    public func connect<PayloadType, DS: Scene>
-        (_ segueKey: ReferenceWritableKeyPath<SS, Segue<PayloadType>?>,
-         to sceneIdentifier: KeyPath<S, DS>,
-         transition: SegueTransition)
-        where DS.InputType == PayloadType, DS.InstanceType == UIViewController
+    public func connect<PayloadType, DS, T>
+        (_ segueKey: ReferenceWritableKeyPath<S, Segue<PayloadType>?>,
+         to sceneIdentifier: KeyPath<B, DS>,
+         transition: T)
+        where DS.InputType == PayloadType, T: SegueTransition, T.B == B, T.S == DS
     {
         connect(segueKey, to: sceneIdentifier, transition: transition, mapPayload: { $0 })
     }
@@ -162,21 +166,29 @@ public extension Storyboard {
     }
 }
 
-public class PushTransition: SegueTransition {
+public class PushTransition<B: Storyboard, S: Scene>: SegueTransition {
 
     public init() {}
 
-    public func perform(sourceViewController: UIViewController, destinationViewController: @autoclosure () -> UIViewController, identifier: AnyKeyPath) {
-        sourceViewController.navigationController!.pushViewController(destinationViewController(), animated: true)
+    public func perform(withPayload payload: S.InputType,
+                        from sourceViewController: UIViewController,
+                        toScene identifier: KeyPath<B, S>,
+                        inStoryboard storyboard: B) {
+            let viewController = storyboard.instantiateViewController(withPayload: payload, identifier: identifier)
+            sourceViewController.navigationController!.pushViewController(viewController, animated: true)
     }
 }
 
-public class PresentingTransition: SegueTransition {
+public class PresentingTransition<B: Storyboard, S: Scene>: SegueTransition {
 
     public init() {}
 
-    public func perform(sourceViewController: UIViewController, destinationViewController: @autoclosure () -> UIViewController, identifier: AnyKeyPath) {
-        sourceViewController.present(destinationViewController(), animated: true, completion: nil)
+    public func perform(withPayload payload: S.InputType,
+                        from sourceViewController: UIViewController,
+                        toScene identifier: KeyPath<B, S>,
+                        inStoryboard storyboard: B) {
+        let viewController = storyboard.instantiateViewController(withPayload: payload, identifier: identifier)
+        sourceViewController.present(viewController, animated: true, completion: nil)
     }
 }
 
@@ -278,11 +290,14 @@ extension UITabBarController {
     }
 }
 
-public class UnwindingTransition: SegueTransition {
+public class UnwindingTransition<B: Storyboard, S: Scene>: SegueTransition {
 
     public init() {}
 
-    public func perform(sourceViewController: UIViewController, destinationViewController: @autoclosure () -> UIViewController, identifier: AnyKeyPath) {
+    public func perform(withPayload payload: S.InputType,
+                        from sourceViewController: UIViewController,
+                        toScene identifier: KeyPath<B, S>,
+                        inStoryboard storyboard: B) {
         sourceViewController.unwind(toViewControllerWithSceneIdentifier: identifier)
     }
 }
