@@ -12,9 +12,10 @@ public protocol Scene: StoryboardAwakable {
 }
 
 public protocol SegueTransition {
+    associatedtype P
     associatedtype S: Scene
     associatedtype B: Storyboard
-    func perform(withPayload payload: S.InputType,
+    func perform(withPayload payload: P,
                  from sourceViewController: UIViewController,
                  toScene identifier: KeyPath<B, S>,
                  inStoryboard storyboard: B)
@@ -42,7 +43,7 @@ public class Segue<PayloadType> {
                   destiantionIdenditifier: KeyPath<T.B, S>,
                   transition: T,
                   mapPayload: @escaping (PayloadType) -> P)
-        where S == T.S, P == S.InputType, T: SegueTransition {
+        where S == T.S, P == T.P, T: SegueTransition {
             perform = { payload, sourceViewController in
                 transition.perform(withPayload: mapPayload(payload),
                                    from: sourceViewController,
@@ -91,12 +92,12 @@ public struct SceneConnector<B: Storyboard, S: Scene> {
         self.sourceScene = sourceScene
     }
 
-    public func connect<PayloadType, FinalPayloadType, DS, T>
+    public func connect<PayloadType, T>
         (_ segueKey: ReferenceWritableKeyPath<S, Segue<PayloadType>?>,
-         to sceneIdentifier: KeyPath<B, DS>,
+         to sceneIdentifier: KeyPath<T.B, T.S>,
          transition: T,
-         mapPayload: @escaping (PayloadType) -> FinalPayloadType)
-        where DS.InputType == FinalPayloadType, T: SegueTransition, T.B == B, T.S == DS
+         mapPayload: @escaping (PayloadType) -> T.P)
+        where T: SegueTransition, T.B == B
     {
         sourceScene[keyPath: segueKey] = Segue(storyboard: storyboard,
                                                destiantionIdenditifier: sceneIdentifier,
@@ -112,11 +113,11 @@ public struct SceneConnector<B: Storyboard, S: Scene> {
         keys.set.insert(sceneIdentifier)
     }
 
-    public func connect<PayloadType, DS, T>
+    public func connect<PayloadType, T>
         (_ segueKey: ReferenceWritableKeyPath<S, Segue<PayloadType>?>,
-         to sceneIdentifier: KeyPath<B, DS>,
+         to sceneIdentifier: KeyPath<T.B, T.S>,
          transition: T)
-        where DS.InputType == PayloadType, T: SegueTransition, T.B == B, T.S == DS
+        where T: SegueTransition, T.B == B, T.P == PayloadType
     {
         connect(segueKey, to: sceneIdentifier, transition: transition, mapPayload: { $0 })
     }
@@ -290,11 +291,11 @@ extension UITabBarController {
     }
 }
 
-public class UnwindingTransition<B: Storyboard, S: Scene>: SegueTransition {
+public class UnwindingTransition<P, B: Storyboard, S: Scene>: SegueTransition {
 
     public init() {}
 
-    public func perform(withPayload payload: S.InputType,
+    public func perform(withPayload payload: P,
                         from sourceViewController: UIViewController,
                         toScene identifier: KeyPath<B, S>,
                         inStoryboard storyboard: B) {
