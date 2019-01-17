@@ -6,9 +6,10 @@ public protocol StoryboardAwakable {
 
 public protocol Scene: StoryboardAwakable {
     associatedtype InputType
+    associatedtype UnwindingInputType
     associatedtype InstanceType: UIViewController
 
-    func instantiateViewController(withPayload payload: InputType) -> InstanceType
+    func instantiateViewController(withPayload payload: InputType) -> (viewController: InstanceType, didUnwind: (UnwindingInputType) -> Void)
 }
 
 public protocol SegueTransition {
@@ -61,12 +62,30 @@ public class Segue<PayloadType> {
 
 typealias SceneIdentifier = AnyKeyPath
 
-fileprivate var ViewControllerIdentifiers = NSMapTable<UIViewController, SceneIdentifier>.weakToStrongObjects()
+class ViewControllerUserInfo {
+    let identifier: SceneIdentifier
+    private let didUnwind: Any
+
+    init<T>(_ identifier: SceneIdentifier, _ didUnwind: @escaping (T) -> Void) {
+        self.identifier = identifier
+        self.didUnwind = didUnwind
+    }
+
+    func didUnwind<T>(withPayload payload: T) {
+        (didUnwind as! (T) -> Void)(payload)
+    }
+}
+
+fileprivate var ViewControllerUserInfos = NSMapTable<UIViewController, ViewControllerUserInfo>.weakToStrongObjects()
 
 extension UIViewController {
 
     var sceneIdentifier: SceneIdentifier? {
-        return ViewControllerIdentifiers.object(forKey: self)
+        return ViewControllerUserInfos.object(forKey: self)?.identifier
+    }
+
+    func didUnwind<T>(withPayload payload: T) {
+        ViewControllerUserInfos.object(forKey: self)?.didUnwind(withPayload: payload)
     }
 }
 
@@ -155,15 +174,16 @@ public extension Storyboard {
         return instantiateViewController(withPayload: (), identifier: Self.rootIdentifier)
     }
 
-    fileprivate func instantiateViewController<InputType, S: Scene>(withPayload payload: InputType,
-                                                        identifier: KeyPath<Self, S>) -> UIViewController
-        where S.InputType == InputType {
-            let scene = self[keyPath: identifier]
-            let viewController = scene.instantiateViewController(withPayload: payload)
+    fileprivate func instantiateViewController<S: Scene>(withPayload payload: S.InputType,
+                                                         identifier: KeyPath<Self, S>) -> UIViewController {
+        let scene = self[keyPath: identifier]
+        let (viewController, didUnwind) = scene.instantiateViewController(withPayload: payload)
 
-            ViewControllerIdentifiers.setObject(identifier, forKey: viewController)
+        let userInfo = ViewControllerUserInfo(identifier, didUnwind)
 
-            return viewController
+        ViewControllerUserInfos.setObject(userInfo, forKey: viewController)
+
+        return viewController
     }
 }
 
@@ -234,37 +254,39 @@ extension UIViewController {
     }
 
     @discardableResult
-    func unwind(toViewControllerWithSceneIdentifier identifier: SceneIdentifier) -> Bool {
+    func unwind(toViewControllerWithSceneIdentifier identifier: SceneIdentifier) -> UIViewController? {
         return unwind(from: self, toViewControllerWithSceneIdentifier: identifier)
     }
 
-    func unwind(from sourceViewController: UIViewController, toViewControllerWithSceneIdentifier identifier: SceneIdentifier) -> Bool {
+    func unwind(from sourceViewController: UIViewController,
+                toViewControllerWithSceneIdentifier identifier: SceneIdentifier) -> UIViewController? {
 
-        if let viewController = allowedChildrenForUnwinding(from: sourceViewController)
-            .first(where: { $0.unwind(from: self, toViewControllerWithSceneIdentifier: identifier) }) {
-            _unwind(towards: viewController)
-            return true
+        for viewController in allowedChildrenForUnwinding(from: sourceViewController) {
+            if let destinationViewController = viewController.unwind(from: self, toViewControllerWithSceneIdentifier: identifier) {
+                _unwind(towards: viewController)
+                return destinationViewController
+            }
         }
 
         if sceneIdentifier == identifier {
-            return true
+            return self
         }
 
         if let parent = parent, parent != sourceViewController {
-            if parent.unwind(from: self, toViewControllerWithSceneIdentifier: identifier) {
+            if let destinationViewController = parent.unwind(from: self, toViewControllerWithSceneIdentifier: identifier) {
                 _unwind(towards: parent)
-                return true
+                return destinationViewController
             }
         }
 
         if let presentingViewController = presentingViewController {
-            if presentingViewController.unwind(from: self, toViewControllerWithSceneIdentifier: identifier) {
+            if let destinationViewController = presentingViewController.unwind(from: self, toViewControllerWithSceneIdentifier: identifier) {
                 _unwind(towards: presentingViewController)
-                return true
+                return destinationViewController
             }
         }
 
-        return false
+        return nil
     }
 }
 
@@ -291,15 +313,15 @@ extension UITabBarController {
     }
 }
 
-public class UnwindingTransition<P, B: Storyboard, S: Scene>: SegueTransition {
+public class UnwindingTransition<B: Storyboard, S: Scene>: SegueTransition {
 
     public init() {}
 
-    public func perform(withPayload payload: P,
+    public func perform(withPayload payload: S.UnwindingInputType,
                         from sourceViewController: UIViewController,
                         toScene identifier: KeyPath<B, S>,
                         inStoryboard storyboard: B) {
-        sourceViewController.unwind(toViewControllerWithSceneIdentifier: identifier)
+        sourceViewController.unwind(toViewControllerWithSceneIdentifier: identifier)?.didUnwind(withPayload: payload)
     }
 }
 
@@ -315,16 +337,17 @@ public class TabBarScene: Scene {
 
     public func didWireUp() {}
 
-    public func instantiateViewController(withPayload payload: ()) -> UITabBarController {
+    public func instantiateViewController(withPayload payload: Void) -> (viewController: UITabBarController, didUnwind: (()) -> ()) {
         let tabBarController = UITabBarController()
 
         tabBarController.viewControllers = loadViewControllers()
 
-        return tabBarController
+        return (tabBarController, {_ in })
     }
 }
 
 public class NavigationScene: Scene {
+    public typealias UnwindingInputType = Void
 
     let loadRootViewController: () -> UIViewController
 
@@ -336,7 +359,7 @@ public class NavigationScene: Scene {
 
     public func didWireUp() {}
 
-    public func instantiateViewController(withPayload payload: ()) -> UINavigationController {
-        return UINavigationController(rootViewController: loadRootViewController())
+    public func instantiateViewController(withPayload payload: ()) -> (viewController: UINavigationController, didUnwind: (()) -> ()) {
+        return (UINavigationController(rootViewController: loadRootViewController()), {_ in })
     }
 }

@@ -9,21 +9,31 @@ class SampleScene : Assembly, Scene {
         assert(completionSegue != nil)
     }
 
-    func instantiateViewController(withPayload payload: Int) -> UIViewController {
-        return provide(instance: SampleViewController(input: payload), complete: { viewController in
-            viewController.title = payload.description
+    func instantiateViewController(withPayload payload: Int) -> (viewController: UIViewController, didUnwind: (Int) -> Void) {
+        let viewController = provide(instance: SampleViewController(input: payload), complete: { viewController in
             viewController.completion = self.completionSegue.invocation(with: viewController)
+        })
+
+        return (viewController,{ payload in
+            print("did unwind with \(payload)")
+            viewController.input = payload
         })
     }
 }
 
 class SampleViewController: UIViewController {
 
-    let input: Int
+    var input: Int = 0 {
+        didSet {
+            title = input.description
+        }
+    }
     var completion: ((Int) -> ())!
 
     init(input: Int) {
-        self.input = input
+        defer {
+            self.input = input
+        }
         super.init(nibName: nil, bundle: nil)
     }
 
