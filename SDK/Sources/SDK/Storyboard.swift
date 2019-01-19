@@ -1,9 +1,5 @@
 import UIKit
 
-public protocol StoryboardAwakable {
-    func didWireUp()
-}
-
 public typealias UnwindingHandler<T> = (T) -> Void
 public typealias SceneInstance<VC: UIViewController, U> = (VC, didUnwind: UnwindingHandler<U>)
 
@@ -12,11 +8,16 @@ open class SeguesContainer {
     required public init() {}
 }
 
-public protocol Scene: class, StoryboardAwakable {
+public protocol Scene: class {
     associatedtype InputType
     associatedtype UnwindingInputType
     associatedtype SeguesContainerType: SeguesContainer
     associatedtype InstanceType: UIViewController
+
+    #if DEBUG
+    var sampleInput: InputType { get }
+    var sampleUnwindingInput: InputType { get }
+    #endif
 
     func instantiate(withPayload payload: InputType, segues: SeguesContainerType) -> SceneInstance<InstanceType, UnwindingInputType>
 }
@@ -46,30 +47,6 @@ public class Connection {
 }
 
 public typealias Segue<PayloadType> = (PayloadType) -> Void
-
-//public class Segue<PayloadType> {
-//
-//    private let perform: (PayloadType, UIViewController) -> Void
-//
-//    init<S, P, T>(storyboard: T.B,
-//                  destiantionIdenditifier: KeyPath<T.B, S>,
-//                  transition: T,
-//                  mapPayload: @escaping (PayloadType) -> P)
-//        where S == T.S, P == T.P, T: SegueTransition {
-//            perform = { payload, sourceViewController in
-//                transition.perform(withPayload: mapPayload(payload),
-//                                   from: sourceViewController,
-//                                   toScene: destiantionIdenditifier,
-//                                   inStoryboard: storyboard)
-//            }
-//    }
-//
-//    public func invocation(with viewController: UIViewController) -> (PayloadType) -> Void {
-//        return { payload in
-//            self.perform(payload, viewController)
-//        }
-//    }
-//}
 
 typealias SceneIdentifier = AnyKeyPath
 
@@ -113,7 +90,9 @@ class ClassContainer<T> {
     }
 }
 
-let storyboardSceneKeys = NSMapTable<AnyObject, ClassContainer<Set<AnyKeyPath>>>.weakToStrongObjects()
+#if DEBUG
+let storyboardValidatedIdentifiers = NSMapTable<AnyObject, ClassContainer<Set<AnyKeyPath>>>.weakToStrongObjects()
+#endif
 
 public struct SceneConnector<B: Storyboard, C: SeguesContainer> {
 
@@ -142,13 +121,19 @@ public struct SceneConnector<B: Storyboard, C: SeguesContainer> {
                                inStoryboard: s)
         }
 
-        let keys = storyboardSceneKeys.object(forKey: s) ?? {
+        #if DEBUG
+        let keys = storyboardValidatedIdentifiers.object(forKey: s) ?? {
             let keySet = ClassContainer(Set<AnyKeyPath>())
-            storyboardSceneKeys.setObject(keySet, forKey: s)
+            storyboardValidatedIdentifiers.setObject(keySet, forKey: s)
             return keySet
-        } ()
+            } ()
 
-        keys.value.insert(sceneIdentifier)
+        if keys.value.insert(sceneIdentifier).inserted {
+            let scene = s[keyPath: sceneIdentifier]
+            let viewController = s.instantiateViewController(withPayload: scene.sampleInput, identifier: sceneIdentifier)
+            viewController.didUnwind(withPayload: scene.sampleUnwindingInput)
+        }
+        #endif
     }
 
     public func connect<PayloadType, T>
@@ -198,13 +183,6 @@ public extension Storyboard {
     }
 
     public func instantiateRootViewController() -> UIViewController {
-        if let keys = storyboardSceneKeys.object(forKey: self)?.value {
-            keys.forEach { key in
-                let scene = self[keyPath: key] as! StoryboardAwakable
-                scene.didWireUp()
-            }
-            storyboardSceneKeys.removeObject(forKey: self)
-        }
         return instantiateViewController(withPayload: (), identifier: Self.rootIdentifier)
     }
 
@@ -249,27 +227,6 @@ public class PresentingTransition<B: Storyboard, S: Scene>: SegueTransition {
     }
 }
 
-//public class ReplacingSegue<Destination: Scene>: Segue<Destination.InputType> {
-//    private let destination: Destination
-//
-//    public init(destination: Destination) {
-//        self.destination = destination
-//    }
-//
-//    public override func perform(withInput input: Destination.InputType, sourceViewController: UIViewController) {
-//        let identifier = destination.identifier
-//
-//        let navigationController = sourceViewController.navigationController!
-//
-//        var viewControllers = Array(navigationController.viewControllers.prefix(while: { $0.identifier != identifier }))
-//
-//        viewControllers.append(destination.instantiateViewController(withPayload: input))
-//
-//        navigationController.setViewControllers(viewControllers, animated: true)
-//    }
-//}
-//
-
 extension UIViewController {
 
     @objc
@@ -281,7 +238,7 @@ extension UIViewController {
     public func unwind(towards viewController: UIViewController) {
     }
 
-    func _unwind(towards viewController: UIViewController) {
+    private func _unwind(towards viewController: UIViewController) {
         if viewController.presentedViewController == self {
             dismiss(animated: true, completion: nil)
         } else {
@@ -371,7 +328,8 @@ public class TabBarScene: Scene {
         }
     }
 
-    public func didWireUp() {}
+    public var sampleInput: Void
+    public var sampleUnwindingInput: Void
 
     public func instantiate(withPayload payload: Void, segues: SeguesContainer) -> (UITabBarController, didUnwind: UnwindingHandler<Void>) {
         let tabBarController = UITabBarController()
@@ -393,7 +351,8 @@ public class NavigationScene: Scene {
         }
     }
 
-    public func didWireUp() {}
+    public var sampleInput: Void
+    public var sampleUnwindingInput: Void
 
     public func instantiate(withPayload payload: Void, segues: SeguesContainer) -> (UINavigationController, didUnwind: UnwindingHandler<Void>) {
         return (UINavigationController(rootViewController: loadRootViewController()), {_ in })

@@ -7,7 +7,11 @@ class SampleScene : Assembly, Scene {
         var completionSegue: Segue<Int>!
     }
 
-    public func didWireUp() {
+    var sampleInput: Int {
+        return Int.random(in: 0...100)
+    }
+    var sampleUnwindingInput: Int {
+        return Int.random(in: 0...100)
     }
 
     func instantiate(withPayload payload: Int, segues: Segues) -> (UIViewController, didUnwind: (Int) -> Void) {
