@@ -1,7 +1,7 @@
 import UIKit
 import SDK
 
-class SampleScene : Assembly, Scene {
+class SampleScene : Scene {
 
     class Segues: SeguesContainer {
         var completionSegue: Segue<Int>!
@@ -15,24 +15,23 @@ class SampleScene : Assembly, Scene {
     }
 
     func instantiate(withPayload payload: Int, segues: Segues) -> (UIViewController, didUnwind: (String) -> Void) {
-        let viewController = provide(instance: SampleViewController(input: payload), complete: { viewController in
-            viewController.completion = segues.completionSegue
-        })
-
-        return (viewController,{ payload in
+        let viewController = SampleViewController(input: payload, completion: segues.completionSegue)
+        let didUnwind = { (payload: String) in
             print("did unwind with \(payload)")
-            viewController.title = "\(viewController.input.description) -> \(payload)"
-        })
+            viewController.title = "\(viewController.input.description) <- \(payload)"
+        }
+        return (viewController, didUnwind)
     }
 }
 
 class SampleViewController: UIViewController {
 
     let input: Int
-    var completion: ((Int) -> ())!
+    let completion: (Int) -> Void
 
-    init(input: Int) {
+    init(input: Int, completion: @escaping (Int) -> Void) {
         self.input = input
+        self.completion = completion
         super.init(nibName: nil, bundle: nil)
         self.title = input.description
     }
