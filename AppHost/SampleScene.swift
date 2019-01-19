@@ -10,36 +10,31 @@ class SampleScene : Assembly, Scene {
     var sampleInput: Int {
         return Int.random(in: 0...100)
     }
-    var sampleUnwindingInput: Int {
-        return Int.random(in: 0...100)
+    var sampleUnwindingInput: String {
+        return "Sample string"
     }
 
-    func instantiate(withPayload payload: Int, segues: Segues) -> (UIViewController, didUnwind: (Int) -> Void) {
+    func instantiate(withPayload payload: Int, segues: Segues) -> (UIViewController, didUnwind: (String) -> Void) {
         let viewController = provide(instance: SampleViewController(input: payload), complete: { viewController in
             viewController.completion = segues.completionSegue
         })
 
         return (viewController,{ payload in
             print("did unwind with \(payload)")
-            viewController.input = payload
+            viewController.title = "\(viewController.input.description) -> \(payload)"
         })
     }
 }
 
 class SampleViewController: UIViewController {
 
-    var input: Int = 0 {
-        didSet {
-            title = input.description
-        }
-    }
+    let input: Int
     var completion: ((Int) -> ())!
 
     init(input: Int) {
-        defer {
-            self.input = input
-        }
+        self.input = input
         super.init(nibName: nil, bundle: nil)
+        self.title = input.description
     }
 
     required init?(coder aDecoder: NSCoder) {

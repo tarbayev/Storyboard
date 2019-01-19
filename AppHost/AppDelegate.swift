@@ -29,7 +29,7 @@ final class PAXStoryboard: Storyboard {
     var sceneA2: SampleScene! {
         willSet(scene) {
             connect(scene) { c in
-                c.connect(\.completionSegue, to: \.sceneB0, transition: UnwindingTransition())
+                c.connect(\.completionSegue, to: \.sceneB0, transition: UnwindingTransition(), mapPayload: { $0.description })
             }
         }
     }
@@ -45,7 +45,7 @@ final class PAXStoryboard: Storyboard {
     var sceneC0: SampleScene! {
         willSet(scene) {
             connect(scene) { c in
-                c.connect(\.completionSegue, to: \.sceneA0, transition: UnwindingTransition())
+                c.connect(\.completionSegue, to: \.sceneA0, transition: UnwindingTransition(), mapPayload: { $0.description })
             }
         }
     }

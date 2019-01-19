@@ -16,7 +16,7 @@ public protocol Scene: class {
 
     #if DEBUG
     var sampleInput: InputType { get }
-    var sampleUnwindingInput: InputType { get }
+    var sampleUnwindingInput: UnwindingInputType { get }
     #endif
 
     func instantiate(withPayload payload: InputType, segues: SeguesContainerType) -> SceneInstance<InstanceType, UnwindingInputType>
