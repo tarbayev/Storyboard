@@ -4,12 +4,21 @@ public protocol StoryboardAwakable {
     func didWireUp()
 }
 
-public protocol Scene: StoryboardAwakable {
+public typealias UnwindingHandler<T> = (T) -> Void
+public typealias SceneInstance<VC: UIViewController, U> = (VC, didUnwind: UnwindingHandler<U>)
+
+open class SeguesContainer {
+    var viewController: UIViewController!
+    required public init() {}
+}
+
+public protocol Scene: class, StoryboardAwakable {
     associatedtype InputType
     associatedtype UnwindingInputType
+    associatedtype SeguesContainerType: SeguesContainer
     associatedtype InstanceType: UIViewController
 
-    func instantiateViewController(withPayload payload: InputType) -> (viewController: InstanceType, didUnwind: (UnwindingInputType) -> Void)
+    func instantiate(withPayload payload: InputType, segues: SeguesContainerType) -> SceneInstance<InstanceType, UnwindingInputType>
 }
 
 public protocol SegueTransition {
@@ -36,29 +45,31 @@ public class Connection {
     public let instantiateViewController: () -> UIViewController
 }
 
-public class Segue<PayloadType> {
+public typealias Segue<PayloadType> = (PayloadType) -> Void
 
-    private let perform: (PayloadType, UIViewController) -> Void
-
-    init<S, P, T>(storyboard: T.B,
-                  destiantionIdenditifier: KeyPath<T.B, S>,
-                  transition: T,
-                  mapPayload: @escaping (PayloadType) -> P)
-        where S == T.S, P == T.P, T: SegueTransition {
-            perform = { payload, sourceViewController in
-                transition.perform(withPayload: mapPayload(payload),
-                                   from: sourceViewController,
-                                   toScene: destiantionIdenditifier,
-                                   inStoryboard: storyboard)
-            }
-    }
-
-    public func invocation(with viewController: UIViewController) -> (PayloadType) -> Void {
-        return { payload in
-            self.perform(payload, viewController)
-        }
-    }
-}
+//public class Segue<PayloadType> {
+//
+//    private let perform: (PayloadType, UIViewController) -> Void
+//
+//    init<S, P, T>(storyboard: T.B,
+//                  destiantionIdenditifier: KeyPath<T.B, S>,
+//                  transition: T,
+//                  mapPayload: @escaping (PayloadType) -> P)
+//        where S == T.S, P == T.P, T: SegueTransition {
+//            perform = { payload, sourceViewController in
+//                transition.perform(withPayload: mapPayload(payload),
+//                                   from: sourceViewController,
+//                                   toScene: destiantionIdenditifier,
+//                                   inStoryboard: storyboard)
+//            }
+//    }
+//
+//    public func invocation(with viewController: UIViewController) -> (PayloadType) -> Void {
+//        return { payload in
+//            self.perform(payload, viewController)
+//        }
+//    }
+//}
 
 typealias SceneIdentifier = AnyKeyPath
 
@@ -76,16 +87,16 @@ class ViewControllerUserInfo {
     }
 }
 
-fileprivate var ViewControllerUserInfos = NSMapTable<UIViewController, ViewControllerUserInfo>.weakToStrongObjects()
+fileprivate var viewControllerUserInfos = NSMapTable<UIViewController, ViewControllerUserInfo>.weakToStrongObjects()
 
 extension UIViewController {
 
     var sceneIdentifier: SceneIdentifier? {
-        return ViewControllerUserInfos.object(forKey: self)?.identifier
+        return viewControllerUserInfos.object(forKey: self)?.identifier
     }
 
     func didUnwind<T>(withPayload payload: T) {
-        ViewControllerUserInfos.object(forKey: self)?.didUnwind(withPayload: payload)
+        viewControllerUserInfos.object(forKey: self)?.didUnwind(withPayload: payload)
     }
 }
 
@@ -95,50 +106,74 @@ public protocol Storyboard: class {
     static var rootIdentifier: KeyPath<Self, RootSceneType> { get }
 }
 
-class SetClass<T: Hashable> {
-    var set: Set<T> = []
+class ClassContainer<T> {
+    var value: T
+    init(_ value: T) {
+        self.value = value
+    }
 }
 
-fileprivate var StoryboardSceneKeys = NSMapTable<AnyObject, SetClass<AnyKeyPath>>.weakToStrongObjects()
+let storyboardSceneKeys = NSMapTable<AnyObject, ClassContainer<Set<AnyKeyPath>>>.weakToStrongObjects()
 
-public struct SceneConnector<B: Storyboard, S: Scene> {
+public struct SceneConnector<B: Storyboard, C: SeguesContainer> {
 
     private let storyboard: B
-    private let sourceScene: S
+    private let container: C
 
-    init(storyboard: B, sourceScene: S) {
+    init(storyboard: B, container: C) {
         self.storyboard = storyboard
-        self.sourceScene = sourceScene
+        self.container = container
     }
 
     public func connect<PayloadType, T>
-        (_ segueKey: ReferenceWritableKeyPath<S, Segue<PayloadType>?>,
+        (_ segueKey: ReferenceWritableKeyPath<C, Segue<PayloadType>?>,
          to sceneIdentifier: KeyPath<T.B, T.S>,
          transition: T,
          mapPayload: @escaping (PayloadType) -> T.P)
         where T: SegueTransition, T.B == B
     {
-        sourceScene[keyPath: segueKey] = Segue(storyboard: storyboard,
-                                               destiantionIdenditifier: sceneIdentifier,
-                                               transition: transition,
-                                               mapPayload: mapPayload)
+        let c = container
+        let s = storyboard
 
-        let keys = StoryboardSceneKeys.object(forKey: storyboard) ?? {
-            let keySet = SetClass<AnyKeyPath>()
-            StoryboardSceneKeys.setObject(keySet, forKey: storyboard)
+        container[keyPath: segueKey] = { payload in
+            transition.perform(withPayload: mapPayload(payload),
+                               from: c.viewController,
+                               toScene: sceneIdentifier,
+                               inStoryboard: s)
+        }
+
+        let keys = storyboardSceneKeys.object(forKey: s) ?? {
+            let keySet = ClassContainer(Set<AnyKeyPath>())
+            storyboardSceneKeys.setObject(keySet, forKey: s)
             return keySet
         } ()
 
-        keys.set.insert(sceneIdentifier)
+        keys.value.insert(sceneIdentifier)
     }
 
     public func connect<PayloadType, T>
-        (_ segueKey: ReferenceWritableKeyPath<S, Segue<PayloadType>?>,
+        (_ segueKey: ReferenceWritableKeyPath<C, Segue<PayloadType>?>,
          to sceneIdentifier: KeyPath<T.B, T.S>,
          transition: T)
         where T: SegueTransition, T.B == B, T.P == PayloadType
     {
         connect(segueKey, to: sceneIdentifier, transition: transition, mapPayload: { $0 })
+    }
+}
+
+let storyboardSceneConnectors = NSMapTable<AnyObject, ClassContainer<Any>>.weakToStrongObjects()
+
+extension Scene {
+    func setSeguesConnector<B:Storyboard>(_ connector: @escaping (SceneConnector<B, SeguesContainerType>) -> Void) {
+        storyboardSceneConnectors.setObject(ClassContainer(connector), forKey: self)
+    }
+    func segues<B:Storyboard>(inStoryboard: B) -> SeguesContainerType {
+        let segues = SeguesContainerType()
+        if let connect = storyboardSceneConnectors.object(forKey: self)?.value as? (SceneConnector<B, SeguesContainerType>) -> Void {
+            let connector = SceneConnector(storyboard: inStoryboard, container: segues)
+            connect(connector)
+        }
+        return segues
     }
 }
 
@@ -157,19 +192,18 @@ public extension Storyboard {
 
     public func connect<SS: Scene>
         (_ sourceScene: SS,
-         _ connection: (SceneConnector<Self, SS>) -> Void)
+         _ connection: @escaping (SceneConnector<Self, SS.SeguesContainerType>) -> Void)
     {
-        let connector = SceneConnector(storyboard: self, sourceScene: sourceScene)
-        connection(connector)
+        sourceScene.setSeguesConnector(connection)
     }
 
     public func instantiateRootViewController() -> UIViewController {
-        if let keys = StoryboardSceneKeys.object(forKey: self)?.set {
+        if let keys = storyboardSceneKeys.object(forKey: self)?.value {
             keys.forEach { key in
                 let scene = self[keyPath: key] as! StoryboardAwakable
                 scene.didWireUp()
             }
-            StoryboardSceneKeys.removeObject(forKey: self)
+            storyboardSceneKeys.removeObject(forKey: self)
         }
         return instantiateViewController(withPayload: (), identifier: Self.rootIdentifier)
     }
@@ -177,11 +211,13 @@ public extension Storyboard {
     fileprivate func instantiateViewController<S: Scene>(withPayload payload: S.InputType,
                                                          identifier: KeyPath<Self, S>) -> UIViewController {
         let scene = self[keyPath: identifier]
-        let (viewController, didUnwind) = scene.instantiateViewController(withPayload: payload)
+        let segues = scene.segues(inStoryboard: self)
+        let (viewController, didUnwind) = scene.instantiate(withPayload: payload, segues: segues)
+        segues.viewController = viewController
 
         let userInfo = ViewControllerUserInfo(identifier, didUnwind)
 
-        ViewControllerUserInfos.setObject(userInfo, forKey: viewController)
+        viewControllerUserInfos.setObject(userInfo, forKey: viewController)
 
         return viewController
     }
@@ -337,7 +373,7 @@ public class TabBarScene: Scene {
 
     public func didWireUp() {}
 
-    public func instantiateViewController(withPayload payload: Void) -> (viewController: UITabBarController, didUnwind: (()) -> ()) {
+    public func instantiate(withPayload payload: Void, segues: SeguesContainer) -> (UITabBarController, didUnwind: UnwindingHandler<Void>) {
         let tabBarController = UITabBarController()
 
         tabBarController.viewControllers = loadViewControllers()
@@ -359,7 +395,7 @@ public class NavigationScene: Scene {
 
     public func didWireUp() {}
 
-    public func instantiateViewController(withPayload payload: ()) -> (viewController: UINavigationController, didUnwind: (()) -> ()) {
+    public func instantiate(withPayload payload: Void, segues: SeguesContainer) -> (UINavigationController, didUnwind: UnwindingHandler<Void>) {
         return (UINavigationController(rootViewController: loadRootViewController()), {_ in })
     }
 }

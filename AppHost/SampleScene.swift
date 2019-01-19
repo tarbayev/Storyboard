@@ -3,15 +3,16 @@ import SDK
 
 class SampleScene : Assembly, Scene {
 
-    var completionSegue: Segue<Int>!
-
-    public func didWireUp() {
-        assert(completionSegue != nil)
+    class Segues: SeguesContainer {
+        var completionSegue: Segue<Int>!
     }
 
-    func instantiateViewController(withPayload payload: Int) -> (viewController: UIViewController, didUnwind: (Int) -> Void) {
+    public func didWireUp() {
+    }
+
+    func instantiate(withPayload payload: Int, segues: Segues) -> (UIViewController, didUnwind: (Int) -> Void) {
         let viewController = provide(instance: SampleViewController(input: payload), complete: { viewController in
-            viewController.completion = self.completionSegue.invocation(with: viewController)
+            viewController.completion = segues.completionSegue
         })
 
         return (viewController,{ payload in
